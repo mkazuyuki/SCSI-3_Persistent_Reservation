@@ -16,9 +16,10 @@ function register () {
         ret=$?
         if [ $ret -ne 0 ] && [ $ret -ne 2 ]; then
                 echo `date -I'seconds'` [E] [$ret] Register key failed.
-                exit 1
+                ret=1
         else
                 echo `date -I'seconds'` [D] [$ret] Registered key.
+		ret=0
         fi
 }
 
@@ -27,30 +28,42 @@ function reserve () {
         ret=$?
         if [ $ret -eq 0 ]; then
                 echo `date -I'seconds'` [D] [$ret] Reserve success.
-                exit 1
+                ret=0
         else
                 echo `date -I'seconds'` [D] [$ret] Reserve fail
+                ret=1
         fi
 }
 
-while [ 1 ]; do
-
-        echo '####'
-        register
-
-        # Clear
-        sg_persist -o -C -K $key -d $dev
+function clear () {
+        sg_persist -o -C -K $key -d $dev > /dev/null
         ret=$?
         if [ $ret -eq 0 ]; then
-                echo `date -I'seconds'` [I] Clear reservation and registration.
+                echo `date -I'seconds'` [D] Clear reservation and registration.
         else
-                echo `date -I'seconds'` [E] Clear reservation and registration failed. [$ret]
+                echo `date -I'seconds'` [E] [$ret] Clear reservation and registration failed.
                 exit 1
         fi
+}
 
-
+# This registration is performed speculatively.
+register
+while [ 1 ]; do
+        echo `date -I'seconds'` [D] ########
+	clear
         sleep $interval
 
         register
+	if [ $ret -eq 1 ]; then
+		# Exit on fail of REGISTER
+		exit 1;
+	fi
+
         reserve
+	if [ $ret -eq 0 ]; then
+		## Exit on successful RESERVE
+		# sleep 10
+		## Become defender
+		exit 0;
+	fi
 done
