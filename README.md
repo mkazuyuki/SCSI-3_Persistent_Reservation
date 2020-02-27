@@ -4,11 +4,12 @@ EC does not use SCSI PR (SCSI-3 Persistent Reservation) for exclusive control of
 Therefore, the consistency cannot be kept in a specific configuration and situation, and Data Loss may occur.
 This document describes "how EC fail to keep the consistency", then "how to introduce SCSI PR into EC and guarantee No Data Loss".
 
-EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を使用しない。
+この文書は EC が共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を用いないために「如何に一貫性を失うか」そして「EC に SCSI PR を導入し データ損失が無いことを保障する方法」を述べる。
 <!--
+EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を使用しない。
 このため、特定の構成・状況で一貫性を失い、データ損失を起こしうる。
--->
 この文書は「EC が如何に一貫性を失うか」そして「EC に SCSI PR を導入し データ損失が無いことを保証する方法」を述べる。
+-->
 
 ----
 
