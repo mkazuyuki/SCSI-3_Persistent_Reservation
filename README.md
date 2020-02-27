@@ -4,9 +4,11 @@ EC does not use SCSI PR (SCSI-3 Persistent Reservation) for exclusive control of
 Therefore, the consistency cannot be kept in a specific configuration and situation, and Data Loss may occur.
 This document describes "how EC fail to keep the consistency", then "how to introduce SCSI PR into EC and guarantee No Data Loss".
 
-CLUSTERPRO は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を使用しない。
+EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を使用しない。
+<!--
 このため、特定の構成・状況で一貫性を失い、データ損失を起こしうる。
-この文書は「CLUSTERPRO が如何に一貫性を失うか」そして「CLUSTERPRO に SCSI PR を導入し データ損失が無いことを保証する方法」を述べる。
+-->
+この文書は「EC が如何に一貫性を失うか」そして「EC に SCSI PR を導入し データ損失が無いことを保証する方法」を述べる。
 
 ----
 
@@ -54,7 +56,7 @@ CLUSTERPRO は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Re
 	     +------[SD]------+
    ```
 
-5. PM-B は failover を実行する (PM-B で FOG を起動させる)。
+5. PM-B はフェイルオーバを実行する (PM-B で FOG を起動させる)。
 
    ```
 	                      G
@@ -84,7 +86,7 @@ CLUSTERPRO は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Re
 
 3. VM-B は VM-A の HB を受信しなくなり、設定時間経過後 HBTO (heartbeat timeout) を検知する。
 
-4. **NP解決処理として** VM-B は tie-breaker となる IP address (上図の [SW]) に ping を投げ、反応が有り 生残 を決断、failover を実行する (VM-B で FOG を起動させる)。
+4. **NP解決処理として** VM-B は tie-breaker となる IP address (上図の [SW]) に ping を投げ、反応が有り 生残 を決断、フェイルオーバを実行する (VM-B で FOG を起動させる)。
 
    ```
 	     G                G
@@ -108,13 +110,12 @@ CLUSTERPRO は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Re
 両ノードから更新された共有ディスク上の領域 (ドライブ・パーティション等) は一貫性を失い、そこに保存されていたデータは「信頼できない状態」となる。(fsck 等で共有ディスク上の領域を検査すれば 要修正なファイルの発生 が判明するであろう)
 この後、何れかのノードを起動し 共有ディスク上のファイルがエラー無く読み込めたとしても、読み込んだデータが「化けている」可能性は排除できない。
 
-現実には、更新されてしまったのか否かを後から調査・検証することは困難で、fsck でファイルが復旧されたとしても そのファイルを用いて業務を再開できる保障は無い。
-殆どの場合、テープバックアップ等からのリストアによって安全な状態に戻すことになり、また、このリストアによって「バックアップが取得された以降に更新されたデータ」を失うことになる。
+現実には、更新されてしまったのか否かを後から調査・検証することは困難で、たとえ fsck でファイルが復旧されたとしても そのファイルを用いて業務を再開できる保障は無い。
+殆どの場合、テープバックアップ等からのリストアによって安全な状態に戻すことになり、また、このリストアによっても「バックアップが取得された以降に更新されたデータ」を失うことになる。
 
 上記は 「EC を理想的な構成で使用し、障害の発生が 一箇所 であるにも関わらず『業務継続』も『データ保護』も得られないケースの存在」、言い換えれば「EC が業務継続・データ保護 を確率的に行うこと」を示している。
 
-仮想マシンを使用したのは、「物理マシンの場合、遅延が生じた PM-A は watchdog timer によって停止されるケースが殆どで、問題が顕在化しにくいから」である。
-仮想マシンでは watchdog timer 諸共に遅延する状況が起こりやすく、ECはこれに対して脆弱である。
+尚、仮想マシンを使用したのは「物理マシンの場合、遅延が生じた PM-A は watchdog timer によって停止されるケースが殆どで、問題が顕在化しにくいから」である。仮想マシンでは watchdog timer 諸共に遅延し、停止に至らない状況が起こりやすい。
 
 ### How general failover cluster software avoid the inconvenience
 
@@ -136,7 +137,7 @@ CLUSTERPRO は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Re
 
 4. **NP解決処理として** VM-B は SCSI PR (SCSI-3 Persistent Reservation) を用いて、共有ディスクの排他的アクセスを獲得する。その結果 VM-A は共有ディスクへのアクセスを失う。
 
-5. 共有ディスクへの排他的アクセスを獲得した VM-B は failover を実行する (VM-B で FOG を起動させる)。
+5. 共有ディスクへの排他的アクセスを獲得した VM-B はフェイルオーバを実行する (VM-B で FOG を起動させる)。
 
    ```
 	     G                G
