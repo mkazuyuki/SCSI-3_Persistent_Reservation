@@ -70,7 +70,7 @@ EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservatio
 
 ### An Inconvenient Case
 
-「An Ideal Case」との異いは、サーバとして仮想マシン VM-A, B を用いることのみである。これもまた構成そのものは典型的と言える。
+「An Ideal Case」との違いは、サーバとして仮想マシン VM-A, B を用いることと 発生する障害の種類である。これもまた構成そのものは典型的と言える。
 
 1. 各ノードは 定期的に HB (heartbeat) を (ethernet 経由で) 全ノードに送信する。
    FOG "G" は VM-A で稼動している。
