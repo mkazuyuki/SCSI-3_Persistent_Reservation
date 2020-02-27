@@ -6,56 +6,53 @@
 
 key=abc001
 dev=/dev/sdc
+dev=/dev/disk/by-id/wwn-0x6001405cc0bdfcebdb045cbb3130ad33
 interval=3	#sec
 
-function register () {
-	echo `date -I'seconds'` [D] [$?] Registering key.
-        sg_persist -o -G -S $key -d $dev > /dev/null
+function clear () {
+	sg_persist -o -C -K $key -d $dev > /dev/null
+	ret=$?
+	if [ $ret -eq 0 ]; then
+		echo `date -I'seconds'` [I] [$ret] Clear succeeded
+	else
+		echo `date -I'seconds'` [E] [$ret] Clear failed
+	fi
+}
 
-	sg_persist -k $dev | grep $key > /dev/null
-        ret=$?
-        if [ $ret -ne 0 ] && [ $ret -ne 2 ]; then
-                echo `date -I'seconds'` [E] [$ret] Register key failed.
-                exit 1
-        else
-                echo `date -I'seconds'` [D] [$ret] Registered key.
-        fi
+function register () {
+	sg_persist -o -G -S $key -d $dev > /dev/null 2>&1
+	#sg_persist -o -G -S $key -d $dev > /dev/null
+	ret=$?
+        if [ $ret -eq 0 ] || [ $ret -eq 2 ]; then
+                echo `date -I'seconds'` [I] [$ret] Register key succeeded
+	else
+                echo `date -I'seconds'` [E] [$ret] Register key failed
+	fi
 }
 
 function reserve () {
-	sg_persist -o -R -K $key -T 3 -d $dev
+	sg_persist -o -R -K $key -T 3 -d $dev > /dev/null
 	ret=$?
 	if [ $ret -eq 0 ]; then
-		echo `date -I'seconds'` [D] [$ret] Reserve success.
+		echo `date -I'seconds'` [I] [$ret] Reserve succeeded.
 	else
-		echo `date -I'seconds'` [E] [$ret] Reserve fail
-		exit 1 # Become atacker
+		echo `date -I'seconds'` [E] [$ret] Reserve failed. Will become ATACKER
+		exit 0 # Become atacker
 	fi
 }
 
-echo `date -I'seconds'` [I] Register key and Clear reservation and registration.
-sg_persist -o -G -S $key -d $dev
-sg_persist -o -C -K $key -d $dev
-
+register
 while [ 1 ]; do
-
-	echo '####'
-	sg_persist -k $dev | grep $key > /dev/null
-	if [ $? -eq 0 ]; then
-		echo `date -I'seconds'` [I] Key registration exists.
-		sg_persist -r $dev | grep 'Exclusive Access' > /dev/null
-		ret=$?
-		if [ $ret -eq 0 ]; then
-			echo `date -I'seconds'` [D] Reserve exists.
-		else
-			echo `date -I'seconds'` [D] [$ret] Reserve not found.
-			reserve
-		fi
+	echo `date -I'seconds'` [D] ----
+	clear
+	register
+	reserve
+	sg_persist -r $dev | grep -A 1 $key | grep  'Exclusive Access' > /dev/null
+	ret=$?
+	if [ $ret -eq 0 ]; then
+		echo `date -I'seconds'` [I] [$ret] Reserve found.
 	else
-		echo `date -I'seconds'` [I] key registration NOT exists.
-		register
-		reserve
+		echo `date -I'seconds'` [E] [$ret] Reserve not found.
 	fi
 	sleep $interval
 done
-
