@@ -1,28 +1,22 @@
 # Exclusive control of shared-disk for HA cluster using SCSI-3 Persistent Reservation
 
 EC does not use SCSI PR (SCSI-3 Persistent Reservation) for exclusive control of shared-disk.
-Therefore, the consistency cannot be kept in a specific configuration and situation, and Data Loss may occur.
+Therefore, the consistency cannot be kept and Data Loss may occur in a specific configuration and situation.
 This document describes "how EC fail to keep the consistency", then "how to introduce SCSI PR into EC and guarantee No Data Loss".
-<!--
-この文書は EC が共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を用いないために「如何に一貫性を失うか」そして「EC に SCSI PR を導入し データ損失が無いことを保障する方法」を述べる。
--->
-<!--
+
 EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservation) を使用しない。
 このため、特定の構成・状況で一貫性を失い、データ損失を起こしうる。
-この文書は「EC が如何に一貫性を失うか」そして「EC に SCSI PR を導入し データ損失が無いことを保証する方法」を述べる。
--->
+この文書は「EC が如何に一貫性を失うか」「同じ状況に一般的なフェイルオーバークラスタが如何に対処するか」そして「EC に SCSI PR を導入し (一般的なフェイルオーバークラスタ同様に)  一貫性とデータ損失が無いことを保証する方法」を述べる。
 
 ----
 
-## An Inconvenient Truth of EXPRESSCLUSTER
+## An Ideal Case
 
 典型的・理想的な構成の 2ノード共有ディスク型クラスタ を用いて EC における NP解決 を説明する。
 
 - 物理マシンとして PM-A, B を用いる
 - 共有ディスクとして "SD" を用いる
 -  Tie Breaker として pingnp リソース にネットワークスイッチ "SW" のIPアドレスを用いる
-
-### An Ideal Case
 
 1. 各ノードは 定期的に HB (heartbeat) を (ethernet 経由で) 全ノードに送信する。
    FOG (faliover group) "G" は PM-A で稼動している。
@@ -70,7 +64,7 @@ EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservatio
 障害の発生が 一箇所 である限り、両ノードで FOG が起動状態となり、共有ディスクへ 同時/平行 に I/O を行うような「システム・データ が一貫性を失う状況」は発生せず、また、FO により 業務も継続される。  
 
 
-### An Inconvenient Case
+## An Inconvenient Case
 
 「An Ideal Case」との違いは、サーバとして仮想マシン VM-A, B を用いることと 発生する障害の種類である。これもまた構成そのものは典型的と言える。
 
@@ -108,18 +102,20 @@ EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservatio
 	     +------[SD]------+
    ```
 
-4番で、両ノード共 FOG が起動状態となり、6番で自殺するまで、両ノードから共有ディスクへ I/O が 同時/並行 に行われる状況が発生してしまう。
-両ノードから更新された共有ディスク上の領域 (ドライブ・パーティション等) は一貫性を失い、そこに保存されていたデータは「信頼できない状態」となる。(fsck 等で共有ディスク上の領域を検査すれば 要修正なファイルの発生 が判明するであろう)
-この後、何れかのノードを起動し 共有ディスク上のファイルがエラー無く読み込めたとしても、読み込んだデータが「化けている」可能性は排除できない。
+4番で、両ノード共 FOG が起動状態となり、6番で自殺するまで、両ノードから共有ディスクへ I/O が 同時/並行 に行われる状況が発生する。
+これによって 共有ディスクの領域 (ドライブ・パーティション等) 上のデータ (ファイル・ディレクトリ等) は一貫性を失い、そこに保存されていたデータは「信頼できない状態」となる (fsck 等で共有ディスク上の領域を検査すれば 要修正なファイルの発生 が判明するであろう)。
+たとえ ファイルがエラー無く読み込めたとしても、読み込んだデータが「化けている」可能性は排除できない。
 
-現実には、更新されてしまったのか否かを後から調査・検証することは困難で、たとえ fsck でファイルが復旧されたとしても そのファイルを用いて業務を再開できる保障は無い。
-殆どの場合、テープバックアップ等からのリストアによって安全な状態に戻すことになり、また、このリストアによっても「バックアップが取得された以降に更新されたデータ」を失うことになる。
 <!--
 上記は 「EC を理想的な構成で使用し、障害の発生が 一箇所 であるにも関わらず『業務継続』も『データ保護』も得られないケースの存在」、言い換えれば「EC が業務継続・データ保護 を確率的に行うこと」を示している。
 -->
+
+現実には、更新されてしまったのか否かを後から調査・検証することは困難で、たとえ fsck でファイルが復旧されたとしても そのファイルを用いて業務を再開できる保障は無い。
+殆どの場合は テープバックアップ等からのリストアによって 安全な状態に戻すことになり、また、このリストアによって「バックアップが取得された以降に更新されたデータ」を失うことになる (クライアントのログを使用した手動ロールフォワードによってデータを回復するケースの存在も否定はできないが)。
+
 尚、仮想マシンを使用したのは「物理マシンの場合、遅延が生じた PM-A は watchdog timer によって停止されるケースが殆どで、問題が顕在化しにくいから」である。仮想マシンでは watchdog timer 諸共に遅延し、停止に至らない状況が起こりやすい。
 
-### How general failover cluster software avoid the inconvenience
+## How general failover cluster software avoid the inconvenience
 
 「An Incovenient Case」と同じ構成を用いる。
 
@@ -160,17 +156,20 @@ EC は共有ディスクの排他制御に SCSI PR (SCSI-3 Persistent Reservatio
 例え 同様の障害が発生し、5番において 両ノードで FOG が稼働状態となろうとも、SCSI PR により VM-A による共有ディスクへの I/O は排除され、「システム・データ が一貫性を失う状況」は回避される。また、フェイルオーバにより 業務も継続される。
 
 
-### Avoiding the Inconvenience in EC
+## Avoiding the Inconvenience in EC
 
 sg3_utils パッケージの sg_persist コマンドを使用し、以下を行うことで、一般的なフェイルオーバー型クラスタと同じ状況が得られる。
 
-- カスタムモニタリソース を追加、活性時監視に設定し、自ノードで FOG が稼動したら SCSI PR を防御ノードとして実行する。(defender.sh はカスタムモニタリソースに登録するスクリプト genw.sh のサンプル)
+- カスタムモニタリソース を追加、活性時監視に設定し、自ノードで FOG が稼動したら SCSI PR を防御ノードとして実行する。(同梱の defender.sh はカスタムモニタリソースに登録するスクリプト genw.sh のサンプル)
 
-- FOG に exec リソース を追加し、FOG 起動時に SCSI PR を攻撃ノードとして実行する。(atacker.sh は execリソースに登録するスクリプト start.sh のサンプル)
+- FOG に exec リソース を追加し、FOG 起動時に SCSI PR を攻撃ノードとして実行する。(同梱の atacker.sh は execリソースに登録するスクリプト start.sh のサンプル)
 
 - FOG の SDリソース (共有ディスク) を上記 exec リソース に依存するよう設定する。
 
-#### 防御ノード (現用系) が実行する SCSI PR の論理デザイン
+----
+## Appendix
+
+### 防御ノード (現用系) が実行する SCSI PR の論理デザイン
 ```
 defender　{
 	register reservation key
@@ -186,7 +185,7 @@ defender　{
 }
 ```
 
-#### 攻撃ノード (待機系) が実行する SCSI PR の論理デザイン
+### 攻撃ノード (待機系) が実行する SCSI PR の論理デザイン
 ```
 atacker {
 	register reservation key
@@ -202,9 +201,6 @@ atacker {
 	}
 }
 ```
-
-----
-## Appendix
 
 ### SCSI-3 Persist Reservation Command on Linux
 
@@ -248,3 +244,9 @@ PROUT コマンドの type 引数に 3 (exclusive access) を用いると、待�
 
 参照:  
 https://support.microsoft.com/ja-jp/help/309186/how-the-cluster-service-reserves-a-disk-and-brings-a-disk-online
+
+### for Windows
+To obtaion sg_persist for Windows, refer to [README.win32](https://github.com/hreinecke/sg3_utils/blob/master/README.win32) in sg3_utils repository. Once sg_persist is obtained, the same idea and the same way for Linux can be applied for Windows.
+
+----
+2020.03.03 [Miyamoto Kazuyuki](mailto:kazuyuki@nec.com) 1st issue
