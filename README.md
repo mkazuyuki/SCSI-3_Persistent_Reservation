@@ -166,5 +166,48 @@ sg3_utils パッケージの sg_persist コマンドを使用し、以下を行�
 
 - FOG の SDリソース (共有ディスク) を上記 exec リソース に依存するよう設定する。
 
+
+### Setup steps
+
+- On Cluster WebUI, goto [Config mode]
+
+- Create a cluster
+	-Add Group and name it [failover1]
+
+- [ADD resource] at the right side of [failover1]
+	- select [EXEC resource] as [Type] > input [exec-scsipr-atacker] as [Name] > [Next]
+	- uncheck [Follow the default dependency] > [Next]
+	- input [0] times as [Failover Threshold] > select [Stop group] as [Final Action] of [Recovery Operation at Activation Failre Detection] > [Next] 
+	- select [Start Script] > [Replace] > select [[attacker.sh](attacker.sh)] > [Open] > [Edit] > edit the parameter in the script
+		- set the *dev* parameter which disk1 resource locates (e.x. in case of data partition disk1 = /dev/sdc1 ,
+
+				dev=/dev/sdc
+
+	- [Tuning] > [Maintenance] > input [/opt/nec/clusterpro/log/exec-scsipr-ataccker.log] as [Log Output Paht] > check [Rotate Log] > [OK] > [Finish]
+
+
+- [ADD resource] at the right side of [failover1]
+	- select [Disk resource] as [Type] > input [disk1] as [Name] > [Next]
+	- uncheck [Follow the default dependency] > select [exec-scsipr-atacker] > [Add] > [Next]
+	- [Next]
+	- (This is just a sample) )select [disk] as [Disk Type] > select [ext3] as [File System] > select [/dev/sdc2] as [Device Name] > input [/mnt] as [Mount Point] > [Finish]
+
+- [Add monitor resource] at the right side of [Monitors]
+	- select [Custom monitor] as [Type] > input [genw-scsipr-defender] as [Name] > [Next]
+
+	- select [Active] as [Monitor Timing] > [Browse] > select [disk1] > [OK] > [Next]
+
+	- [Replace] > select [[defender.sh](defender.sh)] > [Open] > [Edit] > edit the parameter in the script
+		- set the *dev* parameter which disk1 resource locates (e.x. in case of data partition disk1 = /dev/sdc1 ,
+
+				dev=/dev/sdc
+
+	- select [Asynchronous] as [Monitor Type] > input [/opt/nec/clusterpro/log/genw-scsipr-defender.log] as [Log Output Paht] > check [Rotate Log] > [Next]
+	- select [Execute only the final action] > [Browse] > select [failover1] > [OK] > select [Stop group] as [Final Action] > [Finish]
+
+- [Apply the Configuration File]
+
+
+
 ----
 2020.03.03 [Miyamoto Kazuyuki](mailto:kazuyuki@nec.com) 1st issue

@@ -1,7 +1,7 @@
 #! /bin/sh
-#***********************************************
-#*		     genw.sh		       *
-#***********************************************
+#***************************************
+#*		start.sh	       *
+#***************************************
 
 # Parameter
 #-----------
@@ -10,7 +10,7 @@ dev=/dev/sdc
 
 # finding current node index then making key for Persistent Reserve
 key=abc00`clpstat --local | sed -n '/<server>/,/<group>/p' | grep '^   [\* ][^ ]' | sed -n '0,/^   [\*]/p' | wc -l`
-interval=3	#sec
+interval=7	#sec
 
 echo "[D] key : ${key}"
 echo "[D] dev : ${dev}"
@@ -47,17 +47,19 @@ function reserve () {
 }
 
 register
-while [ 1 ];do
+for ((i=0; i<3; i++));do
 	clear
+	sleep $interval
 	register
 	reserve
 	sg_persist -r $dev | grep -A 1 $key | grep  'Exclusive Access' > /dev/null 2>&1
 	ret=$?
-	if [ $ret -ne 0 ]; then
-		echo [E] [$ret] Reserve not found. Will SUICIDE as failed defender
-		exit 1
+	if [ $ret -eq 0 ]; then
+		echo [I] [$ret] Reserve found. Will become DEFENDER.
+		exit 0
 	fi
-	echo [D] [$ret] Reserve found.
-	sleep $interval
+	echo [D] [$ret] Reserve not found.
 done
-exit 0
+
+# Attack failed
+exit 1
