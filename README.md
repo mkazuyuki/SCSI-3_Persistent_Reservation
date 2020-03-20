@@ -166,6 +166,7 @@ sg3_utils パッケージの sg_persist コマンドを使用し、以下を行�
 
 - FOG の SDリソース (共有ディスク) を上記 exec リソース に依存するよう設定する。
 
+これにより、NP状態において「現用系であった node1 による Reservation 保持 (防御)」と「待機系であった node2 による Reservation 獲得(攻撃)」という構造が得られる。
 
 ### Setup steps
 
